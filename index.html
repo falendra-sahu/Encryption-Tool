@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encryption Tool - Secure Encoder & Hashing Suite</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load CryptoJS for Ciphers and Hashing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    
+    <style>
+        /* Fira Code is the requested font. It will be used for both UI and code text for a consistent, compact, terminal-like feel. */
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Fira Code', monospace;
+        }
+        .font-code {
+            font-family: 'Fira Code', monospace; /* Redundant but good practice */
+        }
+
+        /* Custom Scrollbar (Improved Contrast) */
+        ::-webkit-scrollbar {
+            width: 6px; /* Slightly smaller scrollbar */
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; /* slate-300 */
+            border-radius: 3px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #3f3f46; /* zinc-700 */
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; /* slate-400 */
+        }
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #52525b; /* zinc-600 */
+        }
+
+        /* Hide number input spinners */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+
+        /* Custom Active Button Styling */
+        .tool-btn.active {
+            background-color: #f1f5f9; /* slate-100 */
+            font-weight: 600;
+        }
+        .dark .tool-btn.active {
+            background-color: #27272a; /* zinc-800 */
+        }
+
+        /* Styling for the Key Indicator Icon (Lock) */
+        .key-required-icon {
+            display: none;
+        }
+        .tool-btn[data-type="cipher"] .key-required-icon {
+            display: block;
+        }
+
+        /* Custom highlight for selection */
+        ::selection {
+            background-color: rgba(79, 70, 229, 0.2); /* indigo with opacity */
+        }
+        .dark ::selection {
+            background-color: rgba(96, 165, 250, 0.3); /* blue-400 with opacity */
+        }
+    </style>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-dark': '#1e293b', /* slate-800 */
+                        'secondary-dark': '#0f172a', /* slate-900 */
+                    },
+                    borderRadius: {
+                        'none': '0',
+                        'sm': '0.125rem',
+                        'md': '0.375rem',
+                        'lg': '0.5rem',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-zinc-950 dark:text-zinc-200 h-screen flex flex-col overflow-hidden transition-colors duration-300">
+
+    <!-- Header -->
+    <header class="h-14 border-b border-slate-200 dark:border-zinc-800 flex items-center justify-between px-3 sm:px-4 shrink-0 bg-white dark:bg-zinc-950 shadow-sm z-10">
+        <div class="flex items-center gap-2">
+            <!-- Icon Size Reduced -->
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-900 dark:text-zinc-100">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            <h1 class="font-semibold tracking-tight text-base sm:text-lg text-slate-900 dark:text-zinc-100">Encryption Tool</h1>
+        </div>
+        <button id="themeToggle" class="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors text-slate-600 dark:text-zinc-400" title="Toggle Theme">
+            <!-- Icon Size Reduced -->
+            <svg id="sunIcon" class="hidden dark:block w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+            </svg>
+            <!-- Icon Size Reduced -->
+            <svg id="moonIcon" class="block dark:hidden w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+            </svg>
+        </button>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-60 border-r border-slate-200 dark:border-zinc-800 flex flex-col bg-white dark:bg-zinc-900/50 overflow-y-auto shrink-0 transition-transform duration-300 fixed md:static h-full z-20 -translate-x-full md:translate-x-0 shadow-xl md:shadow-none" id="sidebar">
+            <div class="p-3 space-y-4">
+                
+                <!-- Category: Conversion -->
+                <div>
+                    <h3 class="text-[10px] font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-widest mb-1 px-2">Encoders & Converters</h3>
+                    <div class="space-y-0.5">
+                        <!-- Button Size Reduced to text-xs and py-1.5 -->
+                        <button onclick="selectTool('base64')" class="tool-btn w-full text-left px-2 py-1.5 text-xs rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-between group active" data-tool="base64" data-type="two-way">
+                            <span>Base64 (UTF-8)</span>
+                        </button>
+                        <button onclick="selectTool('url')" class="tool-btn w-full text-left px-2 py-1.5 text-xs rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-between group" data-tool="url" data-type="two-way">
+                            <span>URL Encode/Decode</span>
+                        </button>
+                        <button onclick="selectTool('hex')" class="tool-btn w-full text-left px-2 py-1.5 text-xs rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-between group" data-tool="hex" data-type="two-way">
+                            <span>Hex String</span>
+                        </button>
+                        <button onclick="selectTool('binary')" class="tool-btn w-full text-left px-2 py-1.5 text-xs rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-between group" data-tool="binary" data-type="two-way">
+                            <span>Binary (8-bit)</span>
+                        </button>
+                         <button onclick="selectTool('htmlent')" class="tool-btn w-full text-left px-2 py-1.5 text-xs rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-between group" data-tool="htmlent" data-type="two-way">
+                            <span>HTML Entity</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Category: Ciphers (Key Based) -->
+                <div>
+                    <h3 class="text-[10px] font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-widest mb-1 px-2">Symmetric Ciphers</h3>
+                    <div class="space-y-0.5">
+                        <button onclick="selectTool('aes')" class="tool-btn w-full text-left px-2 py-1.5 text-xs rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-between group" data-tool="aes" data-type="cipher">
+                            <span>AES-256</span>
+                            <!-- Lock Icon Size Reduced -->
+                            <svg class="key-required-icon w-3 h-3 text-red-400 dark:text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                        </button>
+                        <button onclick="selectTool('des')" class="tool-btn w-full text-left px-2 py-1.5 text-xs rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-between group" data-tool="des" data-type="cipher">
+                            <span>DES</span>
+                            <svg class="key-required-icon w-3 h-3 text-red-400 dark:text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                        </button>
+                        <button onclick="selectTool('rabbit')" class="tool-btn w-full text-left px-2 py-1.5 text-xs rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-between group" data-tool="rabbit" data-type="cipher">
+                            <span>Rabbit (Stream)</span>
+                            <svg class="key-required-icon w-3 h-3 text-red-400 dark:text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                        </button>
+                         <button onclick="selectTool('rc4')" class="tool-btn w-full text-left px-2 py-1.5 text-xs rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-between group" data-tool="rc4" data-type="cipher">
+                            <span>RC4 (Stream)</span>
+                            <svg class="key-required-icon w-3 h-3 text-red-400 dark:text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Category: Transforms -->
+                <div>
+                    <h3 class="text-[10px] font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-widest mb-1 px-2">Simple Transforms</h3>
+                    <div class="space-y-0.5">
+                         <button onclick="selectTool('rot13')" class="tool-btn w-full text-left px-2 py-1.5 text-xs rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-between group" data-tool="rot13" data-type="transform">
+                            <span>ROT13 (Caesar)</span>
+                        </button>
+                         <button onclick="selectTool('reverse')" class="tool-btn w-full text-left px-2 py-1.5 text-xs rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-between group" data-tool="reverse" data-type="transform">
+                            <span>Reverse Text</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Category: Hashing -->
+                <div>
+                    <h3 class="text-[10px] font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-widest mb-1 px-2">Hashing Algorithms</h3>
+                    <div class="space-y-0.5">
+                        <button onclick="selectTool('md5')" class="tool-btn w-full text-left px-2 py-1.5 text-xs rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-between group" data-tool="md5" data-type="hash">
+                            <span>MD5</span>
+                            <span class="text-[9px] text-slate-400 border border-slate-300 dark:border-zinc-700 rounded px-1 py-0.5">128b</span>
+                        </button>
+                        <button onclick="selectTool('sha1')" class="tool-btn w-full text-left px-2 py-1.5 text-xs rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-between group" data-tool="sha1" data-type="hash">
+                            <span>SHA-1</span>
+                             <span class="text-[9px] text-slate-400 border border-slate-300 dark:border-zinc-700 rounded px-1 py-0.5">160b</span>
+                        </button>
+                        <button onclick="selectTool('sha256')" class="tool-btn w-full text-left px-2 py-1.5 text-xs rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-between group" data-tool="sha256" data-type="hash">
+                            <span>SHA-256</span>
+                             <span class="text-[9px] text-slate-400 border border-slate-300 dark:border-zinc-700 rounded px-1 py-0.5">256b</span>
+                        </button>
+                        <button onclick="selectTool('sha512')" class="tool-btn w-full text-left px-2 py-1.5 text-xs rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-between group" data-tool="sha512" data-type="hash">
+                            <span>SHA-512</span>
+                             <span class="text-[9px] text-slate-400 border border-slate-300 dark:border-zinc-700 rounded px-1 py-0.5">512b</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+            
+            <!-- Mobile Menu Toggle & Title -->
+            <div class="md:hidden p-3 border-b border-slate-200 dark:border-zinc-800 flex justify-between items-center bg-white dark:bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-10">
+                <span id="mobileTitle" class="font-semibold text-sm">Base64 (UTF-8)</span>
+                <button onclick="toggleSidebar()" class="p-1.5 border border-slate-300 dark:border-zinc-700 rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-300">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                </button>
+            </div>
+
+            <!-- Main Content Area -->
+            <div class="flex-1 overflow-y-auto p-3 md:p-5 max-w-7xl mx-auto w-full space-y-4">
+                
+                <!-- Tool Header info -->
+                <div class="pb-2 border-b border-dashed border-slate-200 dark:border-zinc-800">
+                    <h2 id="currentToolTitle" class="text-2xl font-bold text-slate-900 dark:text-white mb-0">Base64 (UTF-8)</h2>
+                    <p id="currentToolDesc" class="text-xs text-slate-500 dark:text-zinc-400 mt-1">Encode and decode data using Base64 representation with full UTF-8 support.</p>
+                </div>
+
+                <!-- Parameters Area -->
+                <div id="paramsArea" class="config-block hidden bg-slate-100 dark:bg-zinc-900 p-3 border border-slate-300 dark:border-zinc-700 shadow-inner rounded-lg">
+                    <label class="block text-[10px] font-semibold uppercase tracking-widest text-slate-600 dark:text-zinc-400 mb-1">Secret Passphrase / Key</label>
+                    <div class="flex gap-2">
+                        <!-- Key Input Size Reduced -->
+                        <input type="password" id="secretKey" placeholder="Enter your secret key..." 
+                               class="flex-1 font-code bg-white dark:bg-zinc-950 border border-slate-300 dark:border-zinc-700 px-3 py-1.5 text-xs rounded-md shadow-sm focus:border-indigo-500 dark:focus:border-blue-400 focus:ring-1 focus:ring-indigo-500 dark:focus:ring-blue-400 transition-all">
+                        <!-- Button Size Reduced -->
+                        <button onclick="togglePasswordVisibility()" class="px-2 border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 rounded-md hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-400 transition-colors" title="Toggle Visibility">
+                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                 <path id="eyePath" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                 <circle id="irisCircle" cx="12" cy="12" r="3"></circle>
+                                 <line id="strikeLine" x1="2" y1="2" x2="22" y2="22" class="hidden"></line>
+                             </svg>
+                        </button>
+                    </div>
+                    <p class="text-[9px] text-slate-500 dark:text-zinc-500 mt-1">Required for encryption/decryption. The same key must be used for both operations.</p>
+                </div>
+
+                <!-- Input / Output Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4" style="height: calc(100vh - 250px); min-height: 400px;">
+                    
+                    <!-- Input Section -->
+                    <div class="flex flex-col h-full bg-white dark:bg-zinc-900 shadow-xl rounded-lg overflow-hidden border border-slate-200 dark:border-zinc-800">
+                        <div class="flex items-center justify-between p-2 border-b border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50">
+                            <span class="text-xs font-bold text-slate-600 dark:text-zinc-300 uppercase tracking-wider">Input Text / Cipher</span>
+                            <div class="flex gap-1">
+                                <!-- Swap Button with ID -->
+                                <button onclick="swapContent()" id="swapBtn" class="p-1 rounded-md text-slate-500 hover:text-slate-900 dark:text-zinc-500 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-zinc-700/50 transition-colors group" title="Swap Input/Output">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l5-6 5 6"/><path d="M17 14l-5 6-5-6"/></svg>
+                                </button>
+                                <!-- Paste Button with ID -->
+                                <button onclick="pasteToInput()" id="pasteBtn" class="p-1 rounded-md text-slate-500 hover:text-slate-900 dark:text-zinc-500 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-zinc-700/50 transition-colors group" title="Paste">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                                </button>
+                                <!-- Clear Button with ID -->
+                                <button onclick="clearInput()" id="clearBtn" class="p-1 rounded-md text-slate-500 hover:text-slate-900 dark:text-zinc-500 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-zinc-700/50 transition-colors group" title="Clear">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Textarea Font Size Reduced to xs -->
+                        <textarea id="inputText" class="flex-1 w-full p-3 bg-transparent resize-none focus:outline-none text-xs leading-relaxed font-code placeholder-slate-400 dark:placeholder-zinc-600" placeholder="Type or paste content here..." spellcheck="false"></textarea>
+                        
+                        <!-- Action Bar & Stats -->
+                        <div class="flex flex-col sm:flex-row items-center justify-between p-2 border-t border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 gap-1.5">
+                            <span id="inputStats" class="text-[10px] font-code text-slate-500 dark:text-zinc-500">0 chars | 0 bytes</span>
+                            <div class="flex gap-2" id="actionButtons">
+                                <!-- Dynamic Buttons injected here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Output Section -->
+                    <div class="flex flex-col h-full bg-slate-50 dark:bg-zinc-900/20 shadow-xl rounded-lg overflow-hidden border border-slate-200 dark:border-zinc-800 relative">
+                        <div class="flex items-center justify-between p-2 border-b border-slate-100 dark:border-zinc-800 bg-slate-100 dark:bg-zinc-900/50">
+                            <span class="text-xs font-bold text-slate-600 dark:text-zinc-300 uppercase tracking-wider">Output Result</span>
+                            <!-- Copy Button with ID -->
+                            <button onclick="copyOutput()" id="copyBtn" class="p-1 rounded-md text-slate-500 hover:text-slate-900 dark:text-zinc-500 dark:hover:text-white hover:bg-slate-200/50 dark:hover:bg-zinc-700/50 transition-colors group" title="Copy">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            </button>
+                        </div>
+                        <!-- Textarea Font Size Reduced to xs -->
+                        <textarea id="outputText" class="flex-1 w-full p-3 bg-transparent resize-none focus:outline-none text-xs leading-relaxed font-code text-slate-700 dark:text-zinc-300" readonly placeholder="Result will appear here..."></textarea>
+                        
+                        <!-- Status Indicator & Stats -->
+                        <div class="flex items-center justify-between p-2 border-t border-slate-100 dark:border-zinc-800 bg-slate-100 dark:bg-zinc-900/50">
+                            <span id="outputStats" class="text-[10px] font-code text-slate-500 dark:text-zinc-500">0 chars | 0 bytes</span>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+<script>
+    // --- State & Config ---
+    const state = {
+        tool: 'base64',
+        mode: 'light',
+        isKeyVisible: false,
+        lastPasteTime: 0,
+        isMobile: window.innerWidth < 768
+    };
+
+    const tools = {
+        base64: { title: 'Base64 (UTF-8)', desc: 'Encode/decode text to Base64 format with full UTF-8 compatibility.', type: 'two-way' },
+        url: { title: 'URL Encode/Decode', desc: 'Encodes or decodes text for use in URL query strings.', type: 'two-way' },
+        hex: { title: 'Hex String', desc: 'Converts text to hexadecimal representation and back.', type: 'two-way' },
+        binary: { title: 'Binary (8-bit)', desc: 'Converts text to space-separated 8-bit binary sequences.', type: 'two-way' },
+        htmlent: { title: 'HTML Entities', desc: 'Escapes or unescapes HTML special characters (e.g., < to &lt;).', type: 'two-way' },
+        rot13: { title: 'ROT13 (Caesar)', desc: 'A simple, self-reversible letter substitution cipher.', type: 'transform' }, 
+        reverse: { title: 'Reverse Text', desc: 'Reverses the character order of the input string.', type: 'transform' },
+        aes: { title: 'AES-256 Encryption', desc: 'High-security symmetric encryption using a key.', type: 'cipher' },
+        des: { title: 'DES Encryption', desc: 'Older block cipher algorithm (use AES for security).', type: 'cipher' },
+        rabbit: { title: 'Rabbit Stream Cipher', desc: 'A fast, software-efficient stream cipher.', type: 'cipher' },
+        rc4: { title: 'RC4 Stream Cipher', desc: 'Legacy stream cipher (Caution: known vulnerabilities).', type: 'cipher' },
+        md5: { title: 'MD5 Hash', desc: 'Generates a 128-bit hash (Caution: prone to collision).', type: 'hash' },
+        sha1: { title: 'SHA-1 Hash', desc: 'Generates a 160-bit hash (Caution: deprecated for security).', type: 'hash' },
+        sha256: { title: 'SHA-256 Hash', desc: 'Generates a 256-bit strong cryptographic hash.', type: 'hash' },
+        sha512: { title: 'SHA-512 Hash', desc: 'Generates a 512-bit strong cryptographic hash.', type: 'hash' },
+    };
+
+    // --- DOM Elements ---
+    const els = {
+        html: document.documentElement,
+        body: document.body,
+        themeToggle: document.getElementById('themeToggle'),
+        sidebar: document.getElementById('sidebar'),
+        input: document.getElementById('inputText'),
+        output: document.getElementById('outputText'),
+        inputStats: document.getElementById('inputStats'),
+        outputStats: document.getElementById('outputStats'),
+        title: document.getElementById('currentToolTitle'),
+        desc: document.getElementById('currentToolDesc'),
+        paramsArea: document.getElementById('paramsArea'),
+        secretKey: document.getElementById('secretKey'),
+        actionButtons: document.getElementById('actionButtons'),
+        mobileTitle: document.getElementById('mobileTitle'),
+        toolBtns: document.querySelectorAll('.tool-btn'),
+        eyePath: document.getElementById('eyePath'),
+        irisCircle: document.getElementById('irisCircle'),
+        strikeLine: document.getElementById('strikeLine')
+    };
+
+    // --- Utility Functions (UTF-8, Compatibility, Math) ---
+
+    // 1. Base64 UTF-8 Safe Implementation
+    function utf8EncodeB64(str) {
+        try {
+            // Encode to UTF-8 bytes, then to binary string, then btoa
+            return btoa(unescape(encodeURIComponent(str)));
+        } catch(e) {
+            // Fallback for non-browser environments or very old browsers
+            try {
+                return btoa(str);
+            } catch(e2) {
+                return "Error: Invalid characters in input";
+            }
+        }
+    }
+
+    function utf8DecodeB64(str) {
+        try {
+            // Decode btoa string, then encode URI component from binary string, then decode URI component
+            return decodeURIComponent(escape(atob(str)));
+        } catch(e) {
+            // Error handling for invalid Base64 input
+            throw new Error("Invalid Base64 characters or encoding.");
+        }
+    }
+
+    // 2. Binary <-> Text Conversion
+    function textToBinary(str) {
+        try {
+            return str.split('').map(char => {
+                return char.charCodeAt(0).toString(2).padStart(8, '0');
+            }).join(' ');
+        } catch (e) {
+            return "Error converting text to binary.";
+        }
+    }
+
+    function binaryToText(str) {
+        try {
+            const bytes = str.trim().split(/\s+/).filter(b => b.length > 0);
+            let output = '';
+            for (const byte of bytes) {
+                if (byte.length !== 8) throw new Error("Binary segments must be 8 bits.");
+                output += String.fromCharCode(parseInt(byte, 2));
+            }
+            return output;
+        } catch (e) {
+            throw new Error("Invalid binary format or segment length.");
+        }
+    }
+
+    // 3. ROT13 Cipher
+    function rot13(str) {
+        return str.replace(/[a-zA-Z]/g, function (c) {
+            // ASCII code of 'Z' or 'z'
+            const upperLimit = c <= 'Z' ? 90 : 122;
+            let charCode = c.charCodeAt(0) + 13;
+            return String.fromCharCode(charCode > upperLimit ? charCode - 26 : charCode);
+        });
+    }
+
+    // 4. Utility to get byte length of UTF-8 string
+    function getByteLength(str) {
+        // Simple and relatively performant way to estimate UTF-8 byte length
+        return new Blob([str]).size;
+    }
+
+    // 5. HTML Entity Decoding Fix
+    function decodeHtmlEntities(str) {
+        try {
+            const txt = document.createElement("textarea");
+            txt.innerHTML = str;
+            return txt.value;
+        } catch (e) {
+            // Fallback method
+            return str.replace(/&#(\d+);/g, function(match, dec) {
+                return String.fromCharCode(dec);
+            }).replace(/&lt;/g, '<')
+              .replace(/&gt;/g, '>')
+              .replace(/&amp;/g, '&')
+              .replace(/&quot;/g, '"')
+              .replace(/&apos;/g, "'");
+        }
+    }
+
+    // 6. Enhanced HTML Entity Encoding
+    function encodeHtmlEntities(str) {
+        return str.replace(/[\u00A0-\u9999<>&"']/g, function(i) {
+            if (i === '<') return '&lt;';
+            if (i === '>') return '&gt;';
+            if (i === '&') return '&amp;';
+            if (i === '"') return '&quot;';
+            if (i === "'") return '&#39;';
+            return '&#' + i.charCodeAt(0) + ';';
+        });
+    }
+
+    // 7. Clipboard API with fallback
+    async function readClipboard() {
+        try {
+            // Try modern Clipboard API first
+            if (navigator.clipboard && navigator.clipboard.readText) {
+                const text = await navigator.clipboard.readText();
+                return text;
+            } else {
+                // Fallback: Create a hidden textarea and use execCommand
+                const textarea = document.createElement('textarea');
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                textarea.value = '';
+                document.body.appendChild(textarea);
+                textarea.select();
+                const successful = document.execCommand('paste');
+                document.body.removeChild(textarea);
+                
+                if (successful && textarea.value) {
+                    return textarea.value;
+                } else {
+                    throw new Error('Clipboard access not available');
+                }
+            }
+        } catch (err) {
+            console.warn('Clipboard read failed:', err);
+            throw new Error('Unable to access clipboard. Please use Ctrl+V/Cmd+V instead.');
+        }
+    }
+
+    async function writeClipboard(text) {
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } else {
+                // Fallback method
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textarea);
+                return successful;
+            }
+        } catch (err) {
+            console.warn('Clipboard write failed:', err);
+            return false;
+        }
+    }
+
+    // --- Core UI & Theme Logic ---
+    function toggleTheme() {
+        const newTheme = state.mode === 'light' ? 'dark' : 'light';
+        setTheme(newTheme);
+    }
+
+    function setTheme(mode) {
+        state.mode = mode;
+        localStorage.setItem('Encryption Tool-theme', mode);
+        if (mode === 'dark') {
+            els.html.classList.add('dark');
+        } else {
+            els.html.classList.remove('dark');
+        }
+    }
+
+    // --- Tool Selection ---
+    window.selectTool = function(toolKey) {
+        state.tool = toolKey;
+        const info = tools[toolKey];
+        
+        // 1. Update UI Text
+        els.title.textContent = info.title;
+        els.desc.textContent = info.desc;
+        els.mobileTitle.textContent = info.title;
+        
+        // 2. Update Sidebar Active State
+        els.toolBtns.forEach(btn => {
+            if(btn.dataset.tool === toolKey) btn.classList.add('active');
+            else btn.classList.remove('active');
+        });
+
+        // 3. Hide sidebar on mobile
+        if(state.isMobile) {
+            els.sidebar.classList.add('-translate-x-full');
+        }
+
+        // 4. Configure Parameters Area (Key Input)
+        if (info.type === 'cipher') {
+            els.paramsArea.classList.remove('hidden');
+        } else {
+            els.paramsArea.classList.add('hidden');
+        }
+
+        // 5. Configure Action Buttons
+        renderButtons(info.type);
+
+        // 6. Clear Output and auto-process if applicable
+        els.output.value = '';
+        els.output.classList.remove('text-red-500', 'dark:text-red-400');
+        if (els.input.value.trim() !== '') {
+            // Auto process for hashes and simple transforms
+            if (info.type === 'hash' || info.type === 'transform') {
+                processAction('encode');
+            }
+        }
+        updateStats();
+    };
+
+    function renderButtons(type) {
+        let html = '';
+        // Reduced button padding/font size here
+        const buttonClasses = "px-3 py-1.5 text-[10px] font-semibold rounded-md uppercase tracking-widest transition-colors shadow-lg";
+
+        if (type === 'two-way' || type === 'cipher') {
+            const encodeLabel = type === 'cipher' ? 'Encrypt' : 'Encode';
+            const decodeLabel = type === 'cipher' ? 'Decrypt' : 'Decode';
+            
+            html = `
+                <button onclick="processAction('encode')" class="${buttonClasses} bg-indigo-600 text-white dark:bg-blue-500 dark:hover:bg-blue-400 hover:bg-indigo-700 shadow-indigo-500/30 dark:shadow-blue-500/30">${encodeLabel}</button>
+                <button onclick="processAction('decode')" class="${buttonClasses} border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-700 shadow-none">${decodeLabel}</button>
+            `;
+        } else if (type === 'hash') {
+            html = `
+                <button onclick="processAction('encode')" class="${buttonClasses} bg-indigo-600 text-white dark:bg-blue-500 dark:hover:bg-blue-400 hover:bg-indigo-700 shadow-indigo-500/30 dark:shadow-blue-500/30">Generate Hash</button>
+            `;
+        } else if (type === 'transform') {
+            html = `
+                <button onclick="processAction('encode')" class="${buttonClasses} bg-indigo-600 text-white dark:bg-blue-500 dark:hover:bg-blue-400 hover:bg-indigo-700 shadow-indigo-500/30 dark:shadow-blue-500/30">Process</button>
+            `;
+        }
+        els.actionButtons.innerHTML = html;
+    }
+
+    // --- Core Processing Logic ---
+    window.processAction = function(action) {
+        const input = els.input.value;
+        const key = els.secretKey.value;
+        const tool = state.tool;
+        let result = '';
+        let error = null;
+
+        els.output.classList.remove('text-red-500', 'dark:text-red-400');
+        
+        if (!input && !tools[tool].type.startsWith('hash')) {
+            els.output.value = '';
+            updateStats();
+            return;
+        }
+
+        try {
+            switch(tool) {
+                // Converters
+                case 'base64':
+                    result = action === 'encode' ? utf8EncodeB64(input) : utf8DecodeB64(input);
+                    break;
+                case 'url':
+                    // URL component functions are UTF-8 safe by default
+                    result = action === 'encode' ? encodeURIComponent(input) : decodeURIComponent(input);
+                    break;
+                case 'hex':
+                    if (action === 'encode') {
+                        // Input text to UTF-8 bytes, then Hex string
+                        result = CryptoJS.enc.Hex.stringify(CryptoJS.enc.Utf8.parse(input));
+                    } else {
+                        // Hex string to UTF-8 bytes, then back to string
+                        try {
+                            const hexData = CryptoJS.enc.Hex.parse(input);
+                            result = CryptoJS.enc.Utf8.stringify(hexData);
+                        } catch(e) {
+                            throw new Error("Invalid hexadecimal format");
+                        }
+                    }
+                    break;
+                case 'binary':
+                    result = action === 'encode' ? textToBinary(input) : binaryToText(input);
+                    break;
+                case 'htmlent':
+                    if (action === 'encode') {
+                        result = encodeHtmlEntities(input);
+                    } else {
+                        result = decodeHtmlEntities(input);
+                    }
+                    break;
+
+                // Transforms (always use 'encode' action)
+                case 'rot13': 
+                    result = rot13(input);
+                    break;
+                case 'reverse':
+                    result = input.split('').reverse().join('');
+                    break;
+
+                // Ciphers (Require Key)
+                case 'aes':
+                case 'des':
+                case 'rabbit':
+                case 'rc4':
+                    if (!key.trim()) throw new Error("Key required for Cipher operation.");
+
+                    // Use tool name to dynamically select CryptoJS algorithm
+                    let algo;
+                    if (tool === 'rc4') {
+                        algo = CryptoJS.RC4;
+                    } else {
+                        algo = CryptoJS[tool.toUpperCase()];
+                    }
+                    
+                    if (!algo) {
+                        throw new Error("Algorithm not available");
+                    }
+
+                    if (action === 'encode') {
+                        result = algo.encrypt(input, key).toString();
+                    } else {
+                        try {
+                            const decrypted = algo.decrypt(input, key);
+                            result = decrypted.toString(CryptoJS.enc.Utf8);
+                            
+                            // Check for decryption failure
+                            if (result === "" && input.trim() !== "") {
+                                throw new Error("Decryption failed - possibly wrong key");
+                            }
+                        } catch (decryptError) {
+                            throw new Error("Decryption failed. Check your key and cipher text.");
+                        }
+                    }
+                    break;
+
+                // Hashes (always use 'encode' action)
+                case 'md5':
+                    result = CryptoJS.MD5(input).toString();
+                    break;
+                case 'sha1':
+                    result = CryptoJS.SHA1(input).toString();
+                    break;
+                case 'sha256':
+                    result = CryptoJS.SHA256(input).toString();
+                    break;
+                case 'sha512':
+                    result = CryptoJS.SHA512(input).toString();
+                    break;
+                default:
+                    throw new Error("Unknown tool selected");
+            }
+        } catch (e) {
+            console.error(e);
+            error = e.message || "An unknown error occurred during processing.";
+        }
+
+        if (error) {
+            els.output.value = `ERROR: ${error}`;
+            els.output.classList.add('text-red-500', 'dark:text-red-400');
+        } else {
+            els.output.value = result;
+        }
+        updateStats();
+    };
+
+    function handleAutoProcess() {
+        const type = tools[state.tool].type;
+        // Auto process instantly for hash and transforms
+        if (type === 'hash' || type === 'transform') {
+            processAction('encode');
+        }
+        // Always update stats
+        updateStats();
+    }
+
+    // --- Action Button Success Indicator Logic ---
+    let actionTimers = {};
+
+    function indicateActionSuccess(btnId, successText) {
+        const btn = document.getElementById(btnId);
+        if (!btn) return;
+
+        // Clear existing timer if any
+        if (actionTimers[btnId]) {
+            clearTimeout(actionTimers[btnId]);
+            delete actionTimers[btnId];
+        }
+
+        // Store original content if not already stored
+        if (!btn.dataset.originalContent) {
+            btn.dataset.originalContent = btn.innerHTML;
+        }
+
+        // Check icon (14x14)
+        const checkIcon = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-green-500 dark:text-green-400">
+            <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>`;
+
+        // Success Text
+        const successSpan = `<span class="text-green-500 dark:text-green-400 text-xs font-bold uppercase">${successText}</span>`;
+        
+        // Change to success state
+        btn.innerHTML = `
+            <div class="flex items-center gap-1.5 transition-opacity duration-100">
+                ${checkIcon}
+                ${successSpan}
+            </div>
+        `;
+        
+        // Revert after 500ms
+        actionTimers[btnId] = setTimeout(() => {
+            if (btn.dataset.originalContent) {
+                btn.innerHTML = btn.dataset.originalContent;
+            }
+            delete actionTimers[btnId];
+        }, 500);
+    }
+
+    // --- Stats & Utility UI ---
+    function updateStats() {
+        const inVal = els.input.value;
+        const outVal = els.output.value;
+        const inByte = getByteLength(inVal);
+        const outByte = getByteLength(outVal);
+        // Stats text size reduced to 10px
+        els.inputStats.textContent = `${inVal.length} chars | ${inByte} bytes`;
+        els.outputStats.textContent = `${outVal.length} chars | ${outByte} bytes`;
+    }
+
+    window.swapContent = function() {
+        const temp = els.input.value;
+        els.input.value = els.output.value;
+        els.output.value = temp;
+        els.input.classList.remove('text-red-500', 'dark:text-red-400');
+        updateStats();
+        
+        // Re-process after swap if it's an auto-process tool (hash/transform)
+        const type = tools[state.tool].type;
+        if (type === 'hash' || type === 'transform') {
+            processAction('encode');
+        }
+
+        indicateActionSuccess('swapBtn', 'SWAPPED');
+    }
+
+    window.clearInput = function() {
+        if (!els.input.value.trim()) return; // Don't show feedback if already empty
+        
+        els.input.value = '';
+        els.output.value = '';
+        els.input.focus();
+        updateStats();
+        els.output.classList.remove('text-red-500', 'dark:text-red-400');
+        
+        indicateActionSuccess('clearBtn', 'CLEARED');
+    }
+
+    // --- Fixed Paste Functionality ---
+    window.pasteToInput = async function() {
+        // Prevent rapid clicks
+        const now = Date.now();
+        if (now - state.lastPasteTime < 1000) return;
+        state.lastPasteTime = now;
+        
+        try {
+            const clipboardText = await readClipboard();
+            if (clipboardText && clipboardText.trim()) {
+                els.input.value = clipboardText;
+                els.input.focus();
+                indicateActionSuccess('pasteBtn', 'PASTED');
+                handleAutoProcess();
+            } else {
+                indicateActionSuccess('pasteBtn', 'EMPTY');
+            }
+        } catch (error) {
+            // Show user-friendly error message
+            els.input.value = '';
+            els.input.placeholder = error.message + ' - Use Ctrl+V/Cmd+V instead';
+            els.input.classList.add('placeholder-red-400');
+            indicateActionSuccess('pasteBtn', 'ERROR');
+            
+            // Reset placeholder after 3 seconds
+            setTimeout(() => {
+                els.input.placeholder = "Type or paste content here...";
+                els.input.classList.remove('placeholder-red-400');
+            }, 3000);
+        }
+    }
+
+    // --- Fixed Copy Functionality ---
+    window.copyOutput = async function() {
+        const text = els.output.value;
+        if (!text || text.startsWith('ERROR:')) {
+            indicateActionSuccess('copyBtn', 'EMPTY');
+            return;
+        }
+
+        const success = await writeClipboard(text);
+        if (success) {
+            indicateActionSuccess('copyBtn', 'COPIED');
+        } else {
+            indicateActionSuccess('copyBtn', 'FAIL');
+        }
+    }
+
+    // --- UI Helpers ---
+    window.toggleSidebar = function() {
+        els.sidebar.classList.toggle('-translate-x-full');
+    }
+
+    window.togglePasswordVisibility = function() {
+        state.isKeyVisible = !state.isKeyVisible;
+        els.secretKey.type = state.isKeyVisible ? 'text' : 'password';
+
+        if (state.isKeyVisible) {
+            els.eyePath.classList.add('hidden');
+            els.irisCircle.classList.add('hidden');
+            els.strikeLine.classList.remove('hidden');
+        } else {
+            els.eyePath.classList.remove('hidden');
+            els.irisCircle.classList.remove('hidden');
+            els.strikeLine.classList.add('hidden');
+        }
+    }
+
+    // --- Handle Window Resize ---
+    function handleResize() {
+        state.isMobile = window.innerWidth < 768;
+        if (!state.isMobile) {
+            els.sidebar.classList.remove('-translate-x-full');
+        }
+    }
+
+    // --- Initialization ---
+    function init() {
+        // Load saved theme or detect system preference
+        const savedTheme = localStorage.getItem('Encryption Tool-theme');
+        if (savedTheme) {
+            setTheme(savedTheme);
+        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            setTheme('dark');
+        } else {
+            setTheme('light');
+        }
+
+        // Event Listeners
+        els.themeToggle.addEventListener('click', toggleTheme);
+        els.input.addEventListener('input', handleAutoProcess);
+        els.secretKey.addEventListener('input', handleAutoProcess);
+        
+        // Add paste event listener for manual pasting
+        els.input.addEventListener('paste', function(e) {
+            // Clear any error placeholder
+            this.placeholder = "Type or paste content here...";
+            this.classList.remove('placeholder-red-400');
+            
+            // Small delay to ensure paste completes
+            setTimeout(handleAutoProcess, 10);
+        });
+
+        // Window resize handler
+        window.addEventListener('resize', handleResize);
+
+        // Initial Tool Setup
+        selectTool('base64');
+
+        // Check for viewport width to hide sidebar initially on mobile
+        if(state.isMobile) {
+            els.sidebar.classList.add('-translate-x-full');
+        }
+
+        // Focus input on load
+        setTimeout(() => els.input.focus(), 100);
+    }
+
+    // Start application
+    document.addEventListener('DOMContentLoaded', init);
+
+</script>
+</body>
+</html>
